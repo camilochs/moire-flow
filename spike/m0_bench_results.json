@@ -1,0 +1,34 @@
+[
+  {
+    "n_atoms": 100,
+    "json_size_bytes": 6447,
+    "ser_min_ms": 0.07449998520314693,
+    "de_min_ms": 0.1563329715281725,
+    "round_trip_ms": 0.23083295673131943,
+    "dtype_preserved": true
+  },
+  {
+    "n_atoms": 1000,
+    "json_size_bytes": 63899,
+    "ser_min_ms": 0.6087920628488064,
+    "de_min_ms": 1.255583018064499,
+    "round_trip_ms": 1.8643750809133053,
+    "dtype_preserved": true
+  },
+  {
+    "n_atoms": 10000,
+    "json_size_bytes": 638097,
+    "ser_min_ms": 3.3225000370293856,
+    "de_min_ms": 4.264625022187829,
+    "round_trip_ms": 7.587125059217215,
+    "dtype_preserved": true
+  },
+  {
+    "n_atoms": 100000,
+    "json_size_bytes": 6381429,
+    "ser_min_ms": 22.914082976058125,
+    "de_min_ms": 33.598999958485365,
+    "round_trip_ms": 56.51308293454349,
+    "dtype_preserved": true
+  }
+]
