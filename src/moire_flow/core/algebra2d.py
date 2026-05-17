@@ -33,7 +33,9 @@ def vec2d_dot(v1: np.ndarray, v2: np.ndarray) -> float:
 
 
 def vec2d_cross(v1: np.ndarray, v2: np.ndarray) -> float:
-    return float(np.abs(np.cross(_as_2d(v1), _as_2d(v2))))
+    a = _as_2d(v1)
+    b = _as_2d(v2)
+    return float(abs(a[0] * b[1] - a[1] * b[0]))
 
 
 def vec2d_norm(v: np.ndarray) -> float:

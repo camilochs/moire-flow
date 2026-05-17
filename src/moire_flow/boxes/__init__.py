@@ -1,4 +1,10 @@
 from .base import BOX_REGISTRY, Box, register_box
+from .lattice_matcher import (
+    LatticeMatcher,
+    LatticeMatcherInputs,
+    LatticeMatcherOutput,
+    LatticeMatcherParams,
+)
 from .lattice_transformer import (
     LatticeTransformer,
     LatticeTransformerInputs,
@@ -15,6 +21,10 @@ __all__ = [
     "StructureLoader",
     "StructureLoaderInputs",
     "StructureLoaderParams",
+    "LatticeMatcher",
+    "LatticeMatcherInputs",
+    "LatticeMatcherOutput",
+    "LatticeMatcherParams",
     "LatticeTransformer",
     "LatticeTransformerInputs",
     "LatticeTransformerParams",

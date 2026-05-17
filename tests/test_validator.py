@@ -15,8 +15,8 @@ BASIS = np.array([[0.0, 0.0], [2.106667, 1.824667]])
 
 def _solution(theta_deg: float, s1: float, s2: float, oBlat: np.ndarray) -> MatchingSolution:
     return MatchingSolution(
-        v1=np.array([[1.0, 0.0], [0.0, 0.0]]),
-        v2=np.array([[0.0, 1.0], [0.0, 0.0]]),
+        v1=np.array([1.0, 0.0]),
+        v2=np.array([0.0, 1.0]),
         s1=s1,
         s2=s2,
         theta_deg=theta_deg,

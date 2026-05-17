@@ -24,6 +24,7 @@ NDArray2D = Annotated[NDArray[Shape["*, 2"], np.float64], Field(description="(N,
 NDArray3D = Annotated[NDArray[Shape["*, 3"], np.float64], Field(description="(N, 3) float64")]
 NDArray2x2 = Annotated[NDArray[Shape["2, 2"], np.float64], Field(description="(2, 2) float64")]
 NDArray3x3 = Annotated[NDArray[Shape["3, 3"], np.float64], Field(description="(3, 3) float64")]
+NDArrayVec2 = Annotated[NDArray[Shape["2"], np.float64], Field(description="(2,) float64 — single 2D vector")]
 
 
 class _BoxModel(BaseModel):
@@ -54,10 +55,14 @@ class LayerPair(_BoxModel):
 
 
 class MatchingSolution(_BoxModel):
-    """One candidate supercell from LatticeMatcher."""
+    """One candidate supercell from LatticeMatcher.
 
-    v1: NDArray2x2
-    v2: NDArray2x2
+    `v1` and `v2` are length-2 cartesian vectors spanning the matched
+    supercell in the A-lattice frame.
+    """
+
+    v1: NDArrayVec2
+    v2: NDArrayVec2
     s1: float
     s2: float
     theta_deg: float
@@ -65,6 +70,7 @@ class MatchingSolution(_BoxModel):
     mismatch: float
     area: float
     oBlat: NDArray2x2
+    angle_deg: float | None = None
 
 
 class BilayerAtoms(_BoxModel):
@@ -135,6 +141,7 @@ __all__ = [
     "NDArray3D",
     "NDArray2x2",
     "NDArray3x3",
+    "NDArrayVec2",
     "Structure",
     "LayerPair",
     "MatchingSolution",

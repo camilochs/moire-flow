@@ -48,8 +48,8 @@ def test_layerpair_roundtrip():
 
 def test_matching_solution_roundtrip():
     sol = MatchingSolution(
-        v1=np.eye(2),
-        v2=np.eye(2),
+        v1=np.array([1.0, 0.0]),
+        v2=np.array([0.0, 1.0]),
         s1=1.0,
         s2=1.0,
         theta_deg=15.0,
@@ -60,6 +60,7 @@ def test_matching_solution_roundtrip():
     )
     sol2 = MatchingSolution.model_validate_json(sol.model_dump_json())
     assert sol2.theta_deg == 15.0
+    assert sol2.v1.shape == (2,)
 
 
 def test_bilayer_atoms_roundtrip():
