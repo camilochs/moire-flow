@@ -6,10 +6,13 @@ commensurates them under strain + rotation, build the bilayer atoms, write
 LAMMPS-ready input, and inspect the result — either from Python, the CLI,
 or a visual studio in the browser.
 
-This repo is a refactor of a 12 164-line Colab notebook
-(`reference/lattice_matching_02032026.py`) into nine typed, JSON-serializable
-boxes plus a DAG executor. Logic equivalence with the original is verified by
-37 regression tests — see [VALIDATION.md](VALIDATION.md).
+This is the software backing the AI4AM 2026 abstract
+*Evaluation of Foundation Models for van der Waals Heterostructure Moirè
+Supercells* (Cuccurullo, Chacón Sartori, Franco, Roche, García — ICN2,
+Barcelona). It refactors the original 12 164-line Colab notebook
+(`reference/lattice_matching_02032026.py`) into nine typed,
+JSON-serializable boxes plus a DAG executor. Logic equivalence with the
+original is verified by 37 regression tests — see [VALIDATION.md](VALIDATION.md).
 
 ![moire-flow demo](web/docs/demo.gif)
 
@@ -232,11 +235,23 @@ moire-flow/
 - ✅ **M9** — visual workflow studio (FastAPI + React Flow, light/dark)
 - ⏳ **Docker runtime** — image build for `ghcr.io/camilochs/moire-flow-runtime` (linux/amd64)
 
+## Citation
+
+If you use moire-flow in research, please cite:
+
+> Cuccurullo, S.; Chacón Sartori, C.; Franco, C.; Roche, S.; García, J. H.
+> *Evaluation of Foundation Models for van der Waals Heterostructure Moirè
+> Supercells*. AI4AM 2026, Madrid (Spain), 19–21 May 2026.
+> [Abstract PDF](https://phantomsfoundation.com/AI4AM/2026/Abstracts/AI4AM2026_Cuccurullo_Susi_176.pdf)
+
+The paper motivates a computational workflow for the systematic evaluation
+of classical and machine-learned interatomic potentials (MLIPs) in bilayer
+moire systems: structure generation, simulation setup, and analysis inside
+LAMMPS, focused on structural relaxation, interlayer registry, and moire
+pattern formation. **moire-flow** is the implementation of that workflow,
+generalized so any user can compose it from Python, the CLI, or the visual
+studio above.
+
 ## License
 
 MIT. See `pyproject.toml`.
-
-## Citation
-
-If you use moire-flow in research, please cite the underlying methodology
-described in the original notebook (vendored under `reference/`).
