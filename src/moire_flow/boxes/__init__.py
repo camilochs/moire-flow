@@ -17,6 +17,11 @@ from .lattice_transformer import (
     LatticeTransformerParams,
     TransformedLattice,
 )
+from .md_supercell_builder import (
+    MDSupercellBuilder,
+    MDSupercellBuilderInputs,
+    MDSupercellBuilderParams,
+)
 from .structure_loader import StructureLoader, StructureLoaderInputs, StructureLoaderParams
 from .validator import Validator, ValidatorInputs, ValidatorParams
 
@@ -41,6 +46,9 @@ __all__ = [
     "LatticeTransformerInputs",
     "LatticeTransformerParams",
     "TransformedLattice",
+    "MDSupercellBuilder",
+    "MDSupercellBuilderInputs",
+    "MDSupercellBuilderParams",
     "Validator",
     "ValidatorInputs",
     "ValidatorParams",
