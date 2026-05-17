@@ -27,7 +27,7 @@ Given two 2D lattices (e.g. MoSe₂ on HfSe₂):
 5. **AtomAssembler** — fill the matched supercell with atoms
 6. **Validator** — symmetry-aware angular error, fractional RMSD, coordination match
 7. **MDSupercellBuilder** — promote 2D → 3D triclinic cell with vacuum
-8. **PotentialAssigner** — pick Tersoff / SW / LJ pair styles per layer
+8. **PotentialAssigner** — pick Tersoff / SW / **GAP/QUIP** / **MACE** / LJ pair styles per layer
 9. **LammpsInputWriter** — emit `.data` + `.in` files ready for LAMMPS
 
 Three supports (MaterialsDB client, LAMMPS Docker executor, trajectory
@@ -191,9 +191,24 @@ class MyBox(Box[MyInputs, MyParams, MyOutput]):
 uv run pytest -q
 ```
 
-Expected: 150 tests pass, including 37 regression tests that exercise every
-pure helper against the original notebook on identical inputs (see
-[`VALIDATION.md`](VALIDATION.md)).
+Expected: 165 tests pass, including:
+
+- **37 reference-regression tests** — every pure helper agrees numerically
+  with the original notebook on the same inputs ([VALIDATION.md](VALIDATION.md)).
+- **14 MLIP pair-style tests** — GAP/QUIP and MACE (`pair_style mace` and
+  `pair_style mliap`) script writers and the PotentialAssigner kinds that
+  drive them.
+- **1 end-to-end LAMMPS smoke test** — only runs when the Docker image
+  `moire-flow-runtime:latest` is built locally (otherwise it skips). It
+  writes a 4-atom MoS₂ workflow, executes LAMMPS in the container, parses
+  the resulting log, and asserts a finite final potential energy.
+
+To enable the LAMMPS smoke test:
+
+```bash
+docker build -t moire-flow-runtime:latest runtime/
+uv run pytest tests/test_lammps_e2e.py -v
+```
 
 ## Project layout
 
@@ -233,7 +248,11 @@ moire-flow/
 - ✅ **M7** — MaterialsDB + LammpsExecutor + TrajectoryAnalyzer
 - ✅ **M8** — WorkflowSpec + WorkflowEngine
 - ✅ **M9** — visual workflow studio (FastAPI + React Flow, light/dark)
-- ⏳ **Docker runtime** — image build for `ghcr.io/camilochs/moire-flow-runtime` (linux/amd64)
+- ✅ **Docker runtime (minimal)** — `runtime/Dockerfile` based on `lammps/lammps:latest`,
+  ships Tersoff + SW + LJ + KSPACE. End-to-end LAMMPS smoke test passes.
+- ⏳ **Docker runtime (full)** — `Dockerfile.full` with QUIP/GAP + MACE/ML-IAP
+  (linux/amd64 only — not yet built). Writers, PotentialAssigner kinds, and
+  schemas are ready; only the image needs the source-compile recipe.
 
 ## Citation
 

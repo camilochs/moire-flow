@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
-from moire_flow.constants.potentials import UFF_LJ, atomic_mass
+from moire_flow.constants.potentials import UFF_LJ, atomic_mass, atomic_number
 
 
 def box_from_sc_vecs(
@@ -264,6 +264,129 @@ def format_sw_script(
     """) + nvt_block
 
 
+def format_gap_quip_script(
+    data_file: str,
+    gap_file: str,
+    type_to_element: dict[int, str],
+    *,
+    quip_init: str = "Potential xml_label=GAP",
+    temperature_K: float = 300.0,
+    nvt_steps: int = 0,
+    timestep_ps: float = 0.0005,
+    dump_every: int = 100,
+    prefix: str = "out",
+) -> str:
+    """GAP/QUIP intralayer script.
+
+    LAMMPS syntax:
+        pair_style quip
+        pair_coeff * * gap.xml "Potential xml_label=..." Z1 Z2 ...
+
+    Port of reference `_write_gap_quip_script` (9556-9611).
+    """
+    zmap = [str(atomic_number(type_to_element[i])) for i in range(1, len(type_to_element) + 1)]
+    nvt_block = "" if nvt_steps <= 0 else textwrap.dedent(f"""
+        reset_timestep  0
+        velocity        all create {temperature_K:.0f} 42 dist gaussian mom yes rot yes
+        fix             nvt all nvt temp {temperature_K} {temperature_K} 0.1
+        timestep        {timestep_ps}
+        dump            traj all custom {dump_every} {prefix}_traj.lammpstrj id type mol x y z
+        run             {nvt_steps}
+        unfix           nvt
+        undump          traj
+    """)
+    return textwrap.dedent(f"""\
+        units           metal
+        atom_style      full
+        boundary        p p f
+
+        read_data       {data_file}
+
+        pair_style      quip
+        pair_coeff      * * {gap_file} "{quip_init}" {' '.join(zmap)}
+
+        neighbor        2.0 bin
+        neigh_modify    every 1 delay 0 check yes
+
+        thermo          {dump_every}
+        thermo_style    custom step temp pe ke etotal press
+
+        min_style       cg
+        minimize        1e-4 1e-6 500 2000
+
+        write_data      {prefix}_minimised.data
+    """) + nvt_block
+
+
+def format_mace_script(
+    data_file: str,
+    mace_file: str,
+    type_to_element: dict[int, str],
+    *,
+    flavor: str = "mace",  # "mace" → pair_style mace; "mliap" → pair_style mliap mliappy
+    temperature_K: float = 300.0,
+    nvt_steps: int = 0,
+    timestep_ps: float = 0.0005,
+    dump_every: int = 100,
+    prefix: str = "out",
+) -> str:
+    """MACE intralayer script.
+
+    Two flavors map to two LAMMPS pair styles:
+        flavor="mace"  → pair_style mace; pair_coeff * * model.lammps.pt Mo S
+        flavor="mliap" → pair_style mliap model mliappy <model> descriptor mliappy <model>
+
+    Port of the reference MACE flow (ensure_mace 3862-3905 + the bilayer
+    capability flags). The original notebook does NOT have a dedicated
+    _write_mace_script — the MACE branch reused `_write_tersoff_script`
+    with a swapped pair_style line. We separate it here for clarity.
+    """
+    elems = " ".join(type_to_element[i] for i in range(1, len(type_to_element) + 1))
+    if flavor == "mace":
+        pair_lines = (
+            f"pair_style      mace\n"
+            f"        pair_coeff      * * {mace_file} {elems}"
+        )
+    elif flavor == "mliap":
+        pair_lines = (
+            f"pair_style      mliap model mliappy {mace_file} descriptor mliappy {mace_file}\n"
+            f"        pair_coeff      * * {elems}"
+        )
+    else:
+        raise ValueError(f"Unknown MACE flavor: {flavor!r} (expected 'mace' or 'mliap')")
+
+    nvt_block = "" if nvt_steps <= 0 else textwrap.dedent(f"""
+        reset_timestep  0
+        velocity        all create {temperature_K:.0f} 42 dist gaussian mom yes rot yes
+        fix             nvt all nvt temp {temperature_K} {temperature_K} 0.1
+        timestep        {timestep_ps}
+        dump            traj all custom {dump_every} {prefix}_traj.lammpstrj id type mol x y z
+        run             {nvt_steps}
+        unfix           nvt
+        undump          traj
+    """)
+    return textwrap.dedent(f"""\
+        units           metal
+        atom_style      full
+        boundary        p p f
+
+        read_data       {data_file}
+
+        {pair_lines}
+
+        neighbor        2.0 bin
+        neigh_modify    every 1 delay 0 check yes
+
+        thermo          {dump_every}
+        thermo_style    custom step temp pe ke etotal press
+
+        min_style       cg
+        minimize        1e-4 1e-6 500 2000
+
+        write_data      {prefix}_minimised.data
+    """) + nvt_block
+
+
 def format_bilayer_lj_script(
     data_file: str,
     type_to_element: dict[int, str],
@@ -421,6 +544,8 @@ __all__ = [
     "format_bilayer_data",
     "format_tersoff_script",
     "format_sw_script",
+    "format_gap_quip_script",
+    "format_mace_script",
     "format_bilayer_lj_script",
     "format_intralayer_lj_script",
     "write_text_atomic",

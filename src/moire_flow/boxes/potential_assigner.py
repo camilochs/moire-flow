@@ -14,12 +14,20 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from moire_flow.constants.potentials import SW_REGISTRY, TERSOFF_REGISTRY, UFF_LJ
+from moire_flow.constants.potentials import (
+    GAP_REGISTRY,
+    MACE_REGISTRY,
+    SW_REGISTRY,
+    TERSOFF_REGISTRY,
+    UFF_LJ,
+    atomic_number,
+)
 from moire_flow.core.types import MDStructure, PotentialPlan
 
 from .base import Box, register_box
 
-IntralayerKind = Literal["auto", "tersoff", "sw", "lj"]
+IntralayerKind = Literal["auto", "tersoff", "sw", "gap", "mace", "lj"]
+MaceFlavor = Literal["mace", "mliap"]
 
 
 class PotentialAssignerInputs(BaseModel):
@@ -32,6 +40,15 @@ class PotentialAssignerParams(BaseModel):
     intralayer_kind: IntralayerKind = "auto"
     lj_cutoff: float = Field(default=8.0, gt=0.0)
     epsilon_scale: float = Field(default=1.0, gt=0.0)
+    # MLIP-specific
+    mace_flavor: MaceFlavor = "mace"
+    quip_init: str = "Potential xml_label=GAP"
+    # Auto-mode priority. The original notebook (resolve_intralayer_potential,
+    # ref 3908) used ("tersoff", "sw", "gap", "mace", "original"). We default
+    # to the same order so the foundation-model paths are reachable.
+    auto_priority: list[IntralayerKind] = Field(
+        default_factory=lambda: ["tersoff", "sw", "gap", "mace", "lj"]
+    )
 
 
 def _uff_lj_pairs(elements: list[str], cutoff: float, eps_scale: float) -> dict:
@@ -60,23 +77,56 @@ def _uff_lj_pairs(elements: list[str], cutoff: float, eps_scale: float) -> dict:
     }
 
 
-def _classical_for_elements(elements: list[str], requested: IntralayerKind) -> dict | None:
-    """Return a {kind, pair_style, file, elements} dict if a classical file is known."""
+def _plan_for_kind(
+    kind: IntralayerKind, elements: list[str], params: PotentialAssignerParams
+) -> dict | None:
+    """Return a plan dict for `kind` if the registry has an entry, else None.
+
+    `kind` must be one of the concrete kinds (no "auto" here).
+    """
     key = frozenset(elements)
-    if requested in ("auto", "tersoff") and key in TERSOFF_REGISTRY:
+    if kind == "tersoff" and key in TERSOFF_REGISTRY:
         return {
             "kind": "tersoff",
             "pair_style": "tersoff",
             "file": TERSOFF_REGISTRY[key],
             "elements": elements,
         }
-    if requested in ("auto", "sw") and key in SW_REGISTRY:
+    if kind == "sw" and key in SW_REGISTRY:
         return {
             "kind": "sw",
             "pair_style": "sw",
             "file": SW_REGISTRY[key],
             "elements": elements,
         }
+    if kind == "gap" and key in GAP_REGISTRY:
+        # GAP/QUIP requires atomic numbers in the pair_coeff line
+        return {
+            "kind": "gap",
+            "pair_style": "quip",
+            "file": GAP_REGISTRY[key],
+            "elements": elements,
+            "atomic_numbers": [atomic_number(e) for e in elements],
+            "quip_init": params.quip_init,
+        }
+    if kind == "mace" and key in MACE_REGISTRY:
+        entry = MACE_REGISTRY[key]
+        flavor = params.mace_flavor
+        if flavor not in entry:
+            return None
+        return {
+            "kind": "mace",
+            "pair_style": flavor,  # "mace" or "mliap"
+            "flavor": flavor,
+            "file": entry[flavor],
+            "elements": elements,
+        }
+    if kind == "lj":
+        # Always available as a fallback (UFF table covers ~22 elements)
+        try:
+            return _uff_lj_pairs(elements, params.lj_cutoff, params.epsilon_scale)
+        except KeyError:
+            return None
     return None
 
 
@@ -85,18 +135,24 @@ def _intralayer_for(
 ) -> dict:
     """Pick intralayer plan for one layer."""
     elements = sorted(set(species))
-    if params.intralayer_kind == "lj":
-        return _uff_lj_pairs(elements, params.lj_cutoff, params.epsilon_scale)
-    classical = _classical_for_elements(elements, params.intralayer_kind)
-    if classical is not None:
-        return classical
-    # auto + no classical hit → fall back to lj
     if params.intralayer_kind == "auto":
-        return _uff_lj_pairs(elements, params.lj_cutoff, params.epsilon_scale)
-    raise ValueError(
-        f"intralayer_kind={params.intralayer_kind} requested but no parameters known "
-        f"for elements {elements}"
-    )
+        for k in params.auto_priority:
+            if k == "auto":
+                continue
+            plan = _plan_for_kind(k, elements, params)
+            if plan is not None:
+                return plan
+        raise ValueError(
+            f"auto: no potential available for {elements} "
+            f"(tried {params.auto_priority})"
+        )
+    plan = _plan_for_kind(params.intralayer_kind, elements, params)
+    if plan is None:
+        raise ValueError(
+            f"intralayer_kind={params.intralayer_kind!r} requested but no "
+            f"parameters known for elements {elements}"
+        )
+    return plan
 
 
 @register_box

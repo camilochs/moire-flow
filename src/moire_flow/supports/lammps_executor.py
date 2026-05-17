@@ -85,12 +85,16 @@ class LammpsExecutor:
             raise FileNotFoundError(script_path)
         work_dir = Path(work_dir or script_path.parent).resolve()
         log_path = Path(log_path or work_dir / f"{script_path.stem}.log").resolve()
+        # Force the lmp binary regardless of the image's ENTRYPOINT (the
+        # upstream lammps/lammps image uses ENTRYPOINT ["lmp"] which would
+        # otherwise concatenate "lmp lmp -in …" and fail).
         cmd = [
             self.docker_bin, "run", "--platform", self.platform, "--rm",
             *self.extra_run_args,
             "-v", f"{work_dir}:/work", "-w", "/work",
+            "--entrypoint", "lmp",
             self.image,
-            "lmp", "-in", script_path.name, "-log", log_path.name,
+            "-in", script_path.name, "-log", log_path.name,
         ]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return LammpsRun(

@@ -216,12 +216,37 @@ infrastructure. Concretely:
   stochastic; only the deterministic methods have set-equality regression.
   Acceptable because DE's role is *exploration*; the brute-force pass is
   what nails the final commensurate cell.
-- **Behavior under malformed LAMMPS logs**: `TrajectoryAnalyzer` was tested
-  on synthetic happy-path + edge cases (empty, two blocks). Real LAMMPS
-  output from the Docker runtime is the only way to verify the regex
-  parsing fully — that requires M7 to be runnable.
+- **MLIP numerical equivalence**: the GAP/QUIP and MACE script writers are
+  text-equivalence tested (`tests/test_mlip_pair_styles.py`) but the
+  *output of LAMMPS under those potentials* is not benchmarked against
+  the original notebook (the original had file-system-bound dispatchers
+  that we don't replicate). Pair-style scripts are syntactically validated
+  to invoke `pair_style quip` / `pair_style mace` / `pair_style mliap` with
+  the right `pair_coeff` line; running them requires the full Docker image
+  (QUIP + MACE — pending).
 - **Plotting equivalence**: not applicable (plotting is intentionally
   out of scope).
+
+## 7. End-to-end LAMMPS validation (`tests/test_lammps_e2e.py`)
+
+A single smoke test exercises the full pipeline against a real LAMMPS
+binary running inside `moire-flow-runtime:latest` (built from
+`runtime/Dockerfile`, based on the upstream `lammps/lammps` image).
+
+```
+BilayerAtoms (4 atoms/layer, ortho MoS₂)
+    → MDSupercellBuilder
+    → PotentialAssigner (intralayer_kind="lj")
+    → LammpsInputWriter
+    → LammpsExecutor (docker run --entrypoint lmp …)
+    → TrajectoryAnalyzer
+```
+
+Asserts: subprocess returncode 0, ≥1 thermo block parsed,
+`final_pe_eV` is finite. Skipped automatically when the Docker image
+is not built locally. This is the first test in the suite that has
+actually executed LAMMPS — earlier validation only covered the
+syntactic correctness of our generated `.in` and `.data` files.
 
 ---
 

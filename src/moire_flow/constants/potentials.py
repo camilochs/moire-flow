@@ -53,6 +53,23 @@ SW_REGISTRY: Final[dict[frozenset[str], str]] = {
     frozenset({"W", "S"}): "WS2.sw",
 }
 
+# GAP/QUIP XML model registry. Keyed by element set → path to the .xml in the
+# runtime image. The reference shipped a single `GAP_XML_FILE` constant; we
+# allow per-system models so different bilayers can map to different XMLs.
+GAP_REGISTRY: Final[dict[frozenset[str], str]] = {
+    frozenset({"Mo", "S"}): "MoS2.gap.xml",
+    frozenset({"W", "Se"}): "WSe2.gap.xml",
+    frozenset({"Mo", "Se"}): "MoSe2.gap.xml",
+}
+
+# MACE LAMMPS-compiled model registry. Pair-style "mace" expects a torchscript
+# bundle (`model.lammps.pt`); pair-style "mliap" expects an mliappy model.
+MACE_REGISTRY: Final[dict[frozenset[str], dict[str, str]]] = {
+    frozenset({"Mo", "S"}): {"mace": "MoS2.lammps.pt", "mliap": "MoS2.mliap.pt"},
+    frozenset({"W", "Se"}): {"mace": "WSe2.lammps.pt", "mliap": "WSe2.mliap.pt"},
+    frozenset({"Mo", "Se"}): {"mace": "MoSe2.lammps.pt", "mliap": "MoSe2.mliap.pt"},
+}
+
 
 def atomic_mass(symbol: str) -> float:
     """Atomic mass for `symbol` (AMU). Raises KeyError if unknown."""
@@ -71,4 +88,12 @@ def atomic_number(symbol: str) -> int:
         raise KeyError(f"Unknown element symbol: {symbol!r}") from err
 
 
-__all__ = ["UFF_LJ", "TERSOFF_REGISTRY", "SW_REGISTRY", "atomic_mass", "atomic_number"]
+__all__ = [
+    "UFF_LJ",
+    "TERSOFF_REGISTRY",
+    "SW_REGISTRY",
+    "GAP_REGISTRY",
+    "MACE_REGISTRY",
+    "atomic_mass",
+    "atomic_number",
+]

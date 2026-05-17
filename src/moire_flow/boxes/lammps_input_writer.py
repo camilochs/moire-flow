@@ -19,8 +19,10 @@ from moire_flow.core.types import LammpsRunPlan, MDStructure, PotentialPlan
 from moire_flow.io.lammps_writer import (
     format_bilayer_data,
     format_bilayer_lj_script,
+    format_gap_quip_script,
     format_intralayer_lj_script,
     format_layer_data,
+    format_mace_script,
     format_sw_script,
     format_tersoff_script,
     write_text_atomic,
@@ -82,6 +84,30 @@ def _script_for_intralayer(
             type_to_element,
             plan,
             cutoff=plan.get("cutoff", 8.0),
+            temperature_K=params.temperature_K,
+            nvt_steps=params.nvt_steps,
+            timestep_ps=params.timestep_ps,
+            dump_every=params.dump_every,
+            prefix=prefix,
+        )
+    if kind == "gap":
+        return format_gap_quip_script(
+            data_file_name,
+            plan["file"],
+            type_to_element,
+            quip_init=plan.get("quip_init", "Potential xml_label=GAP"),
+            temperature_K=params.temperature_K,
+            nvt_steps=params.nvt_steps,
+            timestep_ps=params.timestep_ps,
+            dump_every=params.dump_every,
+            prefix=prefix,
+        )
+    if kind == "mace":
+        return format_mace_script(
+            data_file_name,
+            plan["file"],
+            type_to_element,
+            flavor=plan.get("flavor", "mace"),
             temperature_K=params.temperature_K,
             nvt_steps=params.nvt_steps,
             timestep_ps=params.timestep_ps,
