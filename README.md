@@ -249,10 +249,15 @@ moire-flow/
 - ✅ **M8** — WorkflowSpec + WorkflowEngine
 - ✅ **M9** — visual workflow studio (FastAPI + React Flow, light/dark)
 - ✅ **Docker runtime (minimal)** — `runtime/Dockerfile` based on `lammps/lammps:latest`,
-  ships Tersoff + SW + LJ + KSPACE. End-to-end LAMMPS smoke test passes.
-- ⏳ **Docker runtime (full)** — `Dockerfile.full` with QUIP/GAP + MACE/ML-IAP
-  (linux/amd64 only — not yet built). Writers, PotentialAssigner kinds, and
-  schemas are ready; only the image needs the source-compile recipe.
+  ships Tersoff + SW + LJ + KSPACE. Published as
+  `ghcr.io/camilochs/moire-flow-runtime:latest`. End-to-end LAMMPS smoke test passes.
+- ✅ **Docker runtime (full)** — `runtime/Dockerfile.full` source-compiles LAMMPS
+  stable_29Aug2024 with ML-IAP + ML-MACE + ML-SNAP + Python + libtorch; ships
+  `mace-torch` for the mliappy bridge. Published as
+  `ghcr.io/camilochs/moire-flow-runtime:full` (~900 MB compressed). Smoke test
+  validates `mliap` + `snap` pair styles are registered. Built on GitHub Actions
+  native amd64 runners (the `:full` image cannot be reliably built under
+  Rosetta/QEMU on Apple Silicon — see `runtime/README.md`).
 
 ## Citation
 

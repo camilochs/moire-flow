@@ -93,6 +93,7 @@ def test_assigner_gap_for_mos2():
 
 
 def test_assigner_mace_for_mos2():
+    """Default flavor is 'mliap' (works with upstream LAMMPS)."""
     out = PotentialAssigner().run(
         PotentialAssignerInputs(
             md_structure=_md_mos2(), species_A=["Mo", "S"], species_B=["Mo", "S"]
@@ -100,19 +101,20 @@ def test_assigner_mace_for_mos2():
         PotentialAssignerParams(intralayer_kind="mace"),
     )
     assert out.intralayer_A["kind"] == "mace"
-    assert out.intralayer_A["pair_style"] == "mace"
+    assert out.intralayer_A["pair_style"] == "mliap"
     assert out.intralayer_A["file"].endswith(".pt")
 
 
-def test_assigner_mace_mliap_flavor():
+def test_assigner_mace_native_flavor():
+    """Opt-in 'mace' flavor for the ACEsuit/mace_lammps_plugin path."""
     out = PotentialAssigner().run(
         PotentialAssignerInputs(
             md_structure=_md_mos2(), species_A=["Mo", "S"], species_B=["Mo", "S"]
         ),
-        PotentialAssignerParams(intralayer_kind="mace", mace_flavor="mliap"),
+        PotentialAssignerParams(intralayer_kind="mace", mace_flavor="mace"),
     )
-    assert out.intralayer_A["pair_style"] == "mliap"
-    assert out.intralayer_A["flavor"] == "mliap"
+    assert out.intralayer_A["pair_style"] == "mace"
+    assert out.intralayer_A["flavor"] == "mace"
 
 
 def test_assigner_auto_priority_picks_first_match():
@@ -193,7 +195,7 @@ def test_input_writer_routes_to_mace_script(tmp_path):
         PotentialAssignerInputs(
             md_structure=md, species_A=["Mo", "S"], species_B=["Mo", "S"]
         ),
-        PotentialAssignerParams(intralayer_kind="mace"),
+        PotentialAssignerParams(intralayer_kind="mace"),  # default flavor=mliap
     )
     out = LammpsInputWriter().run(
         LammpsInputWriterInputs(
@@ -204,5 +206,7 @@ def test_input_writer_routes_to_mace_script(tmp_path):
         LammpsInputWriterParams(output_dir=tmp_path / "run"),
     )
     text = out.layer_A_script.read_text()
-    assert "pair_style      mace" in text
-    assert ".lammps.pt" in text
+    # Default flavor maps to upstream-LAMMPS-compatible mliap+mliappy
+    assert "pair_style      mliap" in text
+    assert "mliappy" in text
+    assert ".pt" in text

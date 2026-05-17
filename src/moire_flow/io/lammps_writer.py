@@ -323,7 +323,7 @@ def format_mace_script(
     mace_file: str,
     type_to_element: dict[int, str],
     *,
-    flavor: str = "mace",  # "mace" → pair_style mace; "mliap" → pair_style mliap mliappy
+    flavor: str = "mliap",  # "mliap" → pair_style mliap mliappy (default, works with upstream LAMMPS)
     temperature_K: float = 300.0,
     nvt_steps: int = 0,
     timestep_ps: float = 0.0005,
@@ -333,13 +333,15 @@ def format_mace_script(
     """MACE intralayer script.
 
     Two flavors map to two LAMMPS pair styles:
-        flavor="mace"  → pair_style mace; pair_coeff * * model.lammps.pt Mo S
         flavor="mliap" → pair_style mliap model mliappy <model> descriptor mliappy <model>
+                         (default; works with upstream LAMMPS + ML-IAP + mliappy)
+        flavor="mace"  → pair_style mace; pair_coeff * * model.lammps.pt Mo S
+                         (requires the third-party ACEsuit/mace_lammps_plugin)
 
-    Port of the reference MACE flow (ensure_mace 3862-3905 + the bilayer
-    capability flags). The original notebook does NOT have a dedicated
-    _write_mace_script — the MACE branch reused `_write_tersoff_script`
-    with a swapped pair_style line. We separate it here for clarity.
+    Port of the reference MACE flow (ensure_mace 3862-3905). The original
+    notebook does NOT have a dedicated _write_mace_script — the MACE branch
+    reused `_write_tersoff_script` with a swapped pair_style line. We
+    separate it here for clarity.
     """
     elems = " ".join(type_to_element[i] for i in range(1, len(type_to_element) + 1))
     if flavor == "mace":

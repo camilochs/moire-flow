@@ -77,12 +77,18 @@ def docker_visible_tmp(tmp_path_factory) -> Path:
     """Pytest's default tmpdir lives under /private/var/folders/... which
     Colima (and Docker Desktop with default mounts) does NOT expose to the
     VM — leading to 'No such file or directory' when LAMMPS tries to read
-    its input script. Use a path under $HOME instead, which is mounted."""
+    its input script. Use a path under $HOME instead, which is mounted.
+
+    `mktemp` creates the directory in pytest's basetemp; we then mirror
+    that name under $HOME and create it explicitly (a simple string replace
+    on a path that doesn't exist on disk was a previous bug).
+    """
     base = Path.home() / ".cache" / "moire-flow-tests"
     base.mkdir(parents=True, exist_ok=True)
-    return Path(str(tmp_path_factory.mktemp(
-        "lammps_e2e", numbered=True
-    )).replace(str(tmp_path_factory.getbasetemp()), str(base)))
+    inner = tmp_path_factory.mktemp("lammps_e2e", numbered=True)
+    mirrored = base / inner.name
+    mirrored.mkdir(parents=True, exist_ok=True)
+    return mirrored
 
 
 @pytest.fixture
@@ -160,13 +166,17 @@ def test_lammps_runs_a_minimization(
 
 
 @requires_lammps_full
-def test_full_image_recognizes_mace_pair_style(docker_visible_tmp: Path):
-    """The :full image must enumerate `mace` and `mliap` among its pair styles.
+def test_full_image_recognizes_mliap_pair_style(docker_visible_tmp: Path):
+    """The :full image must enumerate `mliap` among its pair styles.
 
-    Uses LAMMPS's `info` command (available since 2014) which prints every
-    pair style compiled into the binary. We don't need a real model file —
-    just to see `mace` in the list. If the ML-MACE package isn't compiled
-    in, `info` won't mention it.
+    `pair_style mliap` is the upstream-LAMMPS path to MACE foundation
+    models — `mliap model mliappy <model.pt> descriptor mliappy <model.pt>`
+    loads a MACE model via Python through the ML-IAP + mliappy bridge.
+    The standalone `pair_style mace` would require ACEsuit's
+    mace_lammps_plugin, which we deliberately don't ship.
+
+    Uses LAMMPS's `info` command which prints every pair style compiled
+    into the binary; no model file needed.
     """
     script = docker_visible_tmp / "probe.in"
     script.write_text("info styles pair\nquit\n")
@@ -174,11 +184,11 @@ def test_full_image_recognizes_mace_pair_style(docker_visible_tmp: Path):
     res = executor.run(script_path=script, work_dir=script.parent, timeout=60.0)
     combined = (res.stdout + "\n"
                 + (res.log.read_text() if res.log.exists() else "")).lower()
-    assert "mace" in combined, (
-        "MACE pair style not registered in the :full image. Full output:\n"
-        + combined[-1500:]
-    )
     assert "mliap" in combined, (
         "ML-IAP pair style not registered in the :full image. Full output:\n"
+        + combined[-1500:]
+    )
+    assert "snap" in combined, (
+        "ML-SNAP pair style not registered in the :full image. Full output:\n"
         + combined[-1500:]
     )

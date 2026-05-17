@@ -41,7 +41,11 @@ class PotentialAssignerParams(BaseModel):
     lj_cutoff: float = Field(default=8.0, gt=0.0)
     epsilon_scale: float = Field(default=1.0, gt=0.0)
     # MLIP-specific
-    mace_flavor: MaceFlavor = "mace"
+    # `mliap` is the default because it works out of the box with stable
+    # upstream LAMMPS (ML-IAP + mliappy bridge). `mace` is only valid when
+    # the third-party MACE-LAMMPS plugin (ACEsuit/mace_lammps_plugin) is
+    # compiled into the binary — currently not part of moire-flow-runtime:full.
+    mace_flavor: MaceFlavor = "mliap"
     quip_init: str = "Potential xml_label=GAP"
     # Auto-mode priority. The original notebook (resolve_intralayer_potential,
     # ref 3908) used ("tersoff", "sw", "gap", "mace", "original"). We default
