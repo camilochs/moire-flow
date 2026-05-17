@@ -54,11 +54,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install mace-torch (CPU). Pulls torch + numpy + e3nn into Python so the
-# mliap-py interpreter inside LAMMPS can deserialize MACE models.
+# mliap-py interpreter inside LAMMPS can deserialize MACE models. Cython
+# is required at cmake-configure time for MLIAP_ENABLE_PYTHON=on (provides
+# the `cythonize` executable).
 RUN pip3 install --no-cache-dir \
         "torch==2.4.1+cpu" \
         --index-url https://download.pytorch.org/whl/cpu \
     && pip3 install --no-cache-dir \
+        "cython>=3.0" \
         "mace-torch>=0.3.6" \
         "numpy<2"
 
@@ -86,7 +89,7 @@ RUN mkdir build && cd build && \
         -D DOWNLOAD_LIBTORCH=on \
         -D CMAKE_INSTALL_PREFIX=/usr/local \
         ../cmake \
-    && make -j2 \
+    && make -j1 \
     && make install \
     && ldconfig
 
