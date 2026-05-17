@@ -3,10 +3,12 @@
 Visual workflow studio for moire-flow. Drag boxes from the catalog, connect
 inputs/outputs, edit params in the inspector, and run the pipeline.
 
-A short walkthrough of the UI: [`docs/demo.mp4`](docs/demo.mp4) — empty canvas
-in dark mode, filter the catalog, import a sample workflow, select a node,
-edit a parameter, toggle light/dark theme, click Run to see the result
-appear in the inspector.
+![Studio demo](docs/demo.gif)
+
+A short walkthrough of the UI (also available as
+[`docs/demo.mp4`](docs/demo.mp4)): empty canvas in dark mode, filter the
+catalog, import a sample workflow, select a node, edit a parameter, toggle
+light/dark theme, click Run to see the result appear in the inspector.
 
 ## Architecture
 

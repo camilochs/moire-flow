@@ -1,0 +1,242 @@
+# moire-flow
+
+A modular workflow engine for **moire lattice matching** and **LAMMPS
+molecular-dynamics setup**. Pick two 2D materials, find the supercell that
+commensurates them under strain + rotation, build the bilayer atoms, write
+LAMMPS-ready input, and inspect the result — either from Python, the CLI,
+or a visual studio in the browser.
+
+This repo is a refactor of a 12 164-line Colab notebook
+(`reference/lattice_matching_02032026.py`) into nine typed, JSON-serializable
+boxes plus a DAG executor. Logic equivalence with the original is verified by
+37 regression tests — see [VALIDATION.md](VALIDATION.md).
+
+![moire-flow demo](web/docs/demo.gif)
+
+## What it does
+
+Given two 2D lattices (e.g. MoSe₂ on HfSe₂):
+
+1. **StructureLoader** — read CIF, LAMMPS `.data`, or XYZ files
+2. **BilayerSplitter** — split a stacked bilayer into two single layers
+3. **LatticeTransformer** — generate synthetic test cases (rotation, strain)
+4. **LatticeMatcher** — search the (s₁, s₂, θ) space via DE or brute force
+5. **AtomAssembler** — fill the matched supercell with atoms
+6. **Validator** — symmetry-aware angular error, fractional RMSD, coordination match
+7. **MDSupercellBuilder** — promote 2D → 3D triclinic cell with vacuum
+8. **PotentialAssigner** — pick Tersoff / SW / LJ pair styles per layer
+9. **LammpsInputWriter** — emit `.data` + `.in` files ready for LAMMPS
+
+Three supports (MaterialsDB client, LAMMPS Docker executor, trajectory
+analyzer) complete the picture.
+
+## Requirements
+
+| Tool | Minimum version | Notes |
+|---|---|---|
+| Python | 3.11 | Managed via [uv](https://docs.astral.sh/uv/) |
+| uv | latest | Python project manager — `brew install uv` or [install script](https://docs.astral.sh/uv/getting-started/installation/) |
+| Node.js | 20+ | Only if you want the web studio |
+| Docker | any | Only if you want to actually run LAMMPS (M7 runtime) |
+
+## Install
+
+```bash
+git clone https://github.com/camilochs/moire-flow.git
+cd moire-flow
+uv sync                # installs Python deps into .venv
+```
+
+To install with the optional web extras:
+
+```bash
+uv sync --extra web    # adds fastapi + uvicorn
+```
+
+To install the frontend (for the studio):
+
+```bash
+cd web/frontend
+npm install
+```
+
+## Usage
+
+### CLI
+
+```bash
+# List all 9 registered boxes
+uv run moire-flow list-boxes
+
+# Print the JSON schemas for one box's inputs/params/outputs
+uv run moire-flow describe lattice_matcher
+
+# Execute a WorkflowSpec from a JSON file
+uv run moire-flow run my_workflow.json --out results/
+```
+
+A minimal `my_workflow.json` that rotates a 2D lattice by 30° and recovers
+the supercell:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "transform",
+      "box_name": "lattice_transformer",
+      "params": { "transform_type": "rotation", "theta_deg": 30.0 },
+      "inputs": {
+        "Alat": [[3.16, 0.0], [0.0, 3.16]],
+        "basis_A": [[0.0, 0.0], [1.58, 1.58]],
+        "species_A": ["Mo", "S"]
+      }
+    },
+    {
+      "id": "match",
+      "box_name": "lattice_matcher",
+      "params": { "method": "rotation_only", "N": 4, "theta_steps": 13 },
+      "inputs": { "Alat": [[3.16, 0.0], [0.0, 3.16]] }
+    }
+  ],
+  "edges": [
+    { "from_node": "transform", "from_field": "Blat",
+      "to_node": "match",     "to_field": "Blat" }
+  ]
+}
+```
+
+### Web Studio
+
+Two terminals:
+
+```bash
+# Terminal 1 — FastAPI backend on port 8765
+uv run uvicorn web.backend.server:app --reload --port 8765
+```
+
+```bash
+# Terminal 2 — Vite dev server on port 5173
+cd web/frontend
+npm run dev
+```
+
+Then open <http://localhost:5173>. The studio supports:
+
+- **Drag-and-drop** box catalog with text filter
+- **Custom React Flow node** with per-field input/output handles
+- **Schema-driven inspector** form (booleans, numbers, enums, JSON)
+- **Light / dark theme** toggle (persisted to `localStorage`)
+- **Import / Export** WorkflowSpec as JSON
+- **Run** the workflow and see results inline in the inspector
+
+See [`web/README.md`](web/README.md) for the backend + frontend internals.
+
+### Python API
+
+```python
+import numpy as np
+from moire_flow.engine import WorkflowEngine, WorkflowSpec, Node, Edge
+
+ALAT = np.array([[3.16, 0.0], [0.0, 3.16]]).tolist()
+BASIS = np.array([[0.0, 0.0], [1.58, 1.58]]).tolist()
+
+spec = WorkflowSpec(
+    nodes=[
+        Node(id="transform",
+             box_name="lattice_transformer",
+             params={"transform_type": "rotation", "theta_deg": 30.0},
+             inputs={"Alat": ALAT, "basis_A": BASIS, "species_A": ["Mo", "S"]}),
+        Node(id="match",
+             box_name="lattice_matcher",
+             params={"method": "rotation_only", "N": 4, "theta_steps": 13},
+             inputs={"Alat": ALAT}),
+    ],
+    edges=[Edge(from_node="transform", from_field="Blat",
+                to_node="match",       to_field="Blat")],
+)
+results = WorkflowEngine().run(spec)
+print(results["match"].solutions[0])
+```
+
+### Adding a new box
+
+Subclass `Box`, declare three Pydantic schemas, and decorate with
+`@register_box`. The CLI and the web studio pick it up automatically — no
+catalog or frontend changes needed.
+
+```python
+from moire_flow.boxes import Box, register_box
+from pydantic import BaseModel
+
+class MyInputs(BaseModel):  ...
+class MyParams(BaseModel):  ...
+class MyOutput(BaseModel):  ...
+
+@register_box
+class MyBox(Box[MyInputs, MyParams, MyOutput]):
+    name = "my_box"
+    description = "What this box does."
+    inputs_schema = MyInputs
+    params_schema = MyParams
+    outputs_schema = MyOutput
+    def run(self, inputs, params): ...
+```
+
+## Testing
+
+```bash
+uv run pytest -q
+```
+
+Expected: 150 tests pass, including 37 regression tests that exercise every
+pure helper against the original notebook on identical inputs (see
+[`VALIDATION.md`](VALIDATION.md)).
+
+## Project layout
+
+```
+moire-flow/
+├── src/moire_flow/
+│   ├── boxes/             — the 9 boxes
+│   ├── core/              — types + math primitives (algebra2d, matching, validation_metrics)
+│   ├── constants/         — UFF_LJ, Tersoff/SW registries
+│   ├── engine/            — WorkflowSpec + WorkflowEngine (DAG executor)
+│   ├── io/                — file readers/writers (CIF, LAMMPS .data, XYZ, LAMMPS scripts)
+│   ├── supports/          — MaterialsDB, LammpsExecutor, TrajectoryAnalyzer
+│   └── cli.py             — `moire-flow` CLI entry point
+├── web/
+│   ├── backend/server.py  — FastAPI app
+│   ├── frontend/          — Vite + React + TypeScript + Tailwind + React Flow
+│   └── docs/              — demo.mp4 + demo.gif
+├── tests/                 — 150 tests (unit + regression + e2e)
+├── reference/             — vendored original Colab script
+├── spike/                 — M0 audit notebooks (dataflow, dedup, Docker decision)
+├── runtime/               — Docker LAMMPS runtime (linux/amd64, to be built)
+├── ANALYSIS.md            — annotated walk-through of the original
+├── ARCHITECTURE.md        — 9-box + 3-support specification
+├── VALIDATION.md          — proof of logic equivalence with the original
+└── pyproject.toml         — uv + hatchling
+```
+
+## Milestone status
+
+- ✅ **M0** — audits + spikes (`spike/`)
+- ✅ **M1** — scaffold (`core/types.py`, Box ABC, StructureLoader, io adapters)
+- ✅ **M2** — LatticeTransformer + Validator
+- ✅ **M3** — LatticeMatcher (continuous DE, brute force, rotation only)
+- ✅ **M4** — BilayerSplitter + AtomAssembler
+- ✅ **M5** — MDSupercellBuilder
+- ✅ **M6** — PotentialAssigner + LammpsInputWriter
+- ✅ **M7** — MaterialsDB + LammpsExecutor + TrajectoryAnalyzer
+- ✅ **M8** — WorkflowSpec + WorkflowEngine
+- ✅ **M9** — visual workflow studio (FastAPI + React Flow, light/dark)
+- ⏳ **Docker runtime** — image build for `ghcr.io/camilochs/moire-flow-runtime` (linux/amd64)
+
+## License
+
+MIT. See `pyproject.toml`.
+
+## Citation
+
+If you use moire-flow in research, please cite the underlying methodology
+described in the original notebook (vendored under `reference/`).
