@@ -29,7 +29,7 @@ Minimal (Tersoff/SW/LJ — multi-arch, ~2-3 min):
 docker build -t moire-flow-runtime:latest runtime/
 ```
 
-Full (+ MACE + ML-IAP — linux/amd64, ~60-120 min on Apple Silicon):
+Full (+ MACE + ML-IAP — **linux/amd64 only**, CI recommended):
 
 ```bash
 docker build --platform linux/amd64 \
@@ -40,8 +40,26 @@ docker build --platform linux/amd64 \
 The `:full` build downloads libtorch (~1 GB), compiles LAMMPS from source
 (`-DPKG_ML-MACE=on -DPKG_ML-IAP=on -DMLIAP_ENABLE_PYTHON=on
 -DDOWNLOAD_LIBTORCH=on`), and installs `mace-torch` for the mliappy
-bridge. Total image size ~6 GB. Bump Colima VM memory before kicking it
-off: `colima stop && colima start --memory 8 --arch x86_64`.
+bridge. Total image size ~6 GB.
+
+> **⚠ Apple Silicon (M-series) caveat.** Building `:full` locally on
+> aarch64 hosts via Rosetta/QEMU emulation is **not reliable** —
+> `g++ 11` segfaults at random C++ units (we observed crashes in
+> `atom_vec_body.cpp` and `ntopo_angle_all.cpp` with both `-j1` and
+> `-j2`, with 4 GiB and 8 GiB VMs). This is an emulation-layer bug,
+> not a memory issue.
+>
+> **Use a native amd64 host or CI instead.** The repo ships
+> [`.github/workflows/build-runtime.yml`](../.github/workflows/build-runtime.yml)
+> which builds and pushes both images to GHCR on `ubuntu-latest`
+> (native amd64). Trigger it from the *Actions* tab of the GitHub
+> UI with `workflow_dispatch` (choose `full` or `both`). After it
+> finishes:
+>
+> ```bash
+> docker pull ghcr.io/camilochs/moire-flow-runtime:full
+> docker tag ghcr.io/camilochs/moire-flow-runtime:full moire-flow-runtime:full
+> ```
 
 ## Smoke check
 
