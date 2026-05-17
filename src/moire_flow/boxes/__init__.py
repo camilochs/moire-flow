@@ -17,10 +17,20 @@ from .lattice_transformer import (
     LatticeTransformerParams,
     TransformedLattice,
 )
+from .lammps_input_writer import (
+    LammpsInputWriter,
+    LammpsInputWriterInputs,
+    LammpsInputWriterParams,
+)
 from .md_supercell_builder import (
     MDSupercellBuilder,
     MDSupercellBuilderInputs,
     MDSupercellBuilderParams,
+)
+from .potential_assigner import (
+    PotentialAssigner,
+    PotentialAssignerInputs,
+    PotentialAssignerParams,
 )
 from .structure_loader import StructureLoader, StructureLoaderInputs, StructureLoaderParams
 from .validator import Validator, ValidatorInputs, ValidatorParams
@@ -46,9 +56,15 @@ __all__ = [
     "LatticeTransformerInputs",
     "LatticeTransformerParams",
     "TransformedLattice",
+    "LammpsInputWriter",
+    "LammpsInputWriterInputs",
+    "LammpsInputWriterParams",
     "MDSupercellBuilder",
     "MDSupercellBuilderInputs",
     "MDSupercellBuilderParams",
+    "PotentialAssigner",
+    "PotentialAssignerInputs",
+    "PotentialAssignerParams",
     "Validator",
     "ValidatorInputs",
     "ValidatorParams",
