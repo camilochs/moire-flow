@@ -1,4 +1,10 @@
+from .atom_assembler import AtomAssembler, AtomAssemblerInputs, AtomAssemblerParams
 from .base import BOX_REGISTRY, Box, register_box
+from .bilayer_splitter import (
+    BilayerSplitter,
+    BilayerSplitterInputs,
+    BilayerSplitterParams,
+)
 from .lattice_matcher import (
     LatticeMatcher,
     LatticeMatcherInputs,
@@ -15,6 +21,12 @@ from .structure_loader import StructureLoader, StructureLoaderInputs, StructureL
 from .validator import Validator, ValidatorInputs, ValidatorParams
 
 __all__ = [
+    "AtomAssembler",
+    "AtomAssemblerInputs",
+    "AtomAssemblerParams",
+    "BilayerSplitter",
+    "BilayerSplitterInputs",
+    "BilayerSplitterParams",
     "BOX_REGISTRY",
     "Box",
     "register_box",

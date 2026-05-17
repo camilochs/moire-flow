@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .algebra2d import change_basis, vec2d_angle_deg, vec2d_cross
+from .algebra2d import change_basis, vec2d_angle_deg, vec2d_cross, vec2d_norm
 
 
 def supercell_points(dims: tuple[int, int], lat_vec: np.ndarray) -> np.ndarray:
@@ -115,6 +115,39 @@ def build_a_lattice_candidates(Alat: np.ndarray, N: int) -> np.ndarray:
     return coeffs @ Alat
 
 
+def atoms_in_supercell(
+    sc_vecs: np.ndarray,
+    lat_mat: np.ndarray,
+    basis_atoms_cart: np.ndarray,
+    n_range: int | None = None,
+) -> np.ndarray:
+    """Fill the supercell `sc_vecs` with periodic copies of `basis_atoms_cart`.
+
+    Faithful port of reference `atoms_in_supercell` (1700-1718): an atom is
+    kept iff its fractional coordinate in the supercell falls inside
+    [0, 1) (with a 1e-6 tolerance on both ends).
+    """
+    sc_mat = np.asarray(sc_vecs, dtype=np.float64)
+    sc_inv = np.linalg.inv(sc_mat)
+    lat_mat = np.asarray(lat_mat, dtype=np.float64)
+    basis_atoms_cart = np.asarray(basis_atoms_cart, dtype=np.float64)
+    if n_range is None:
+        max_norm = max(vec2d_norm(sc_mat[0]), vec2d_norm(sc_mat[1]))
+        lat_norm = min(vec2d_norm(lat_mat[0]), vec2d_norm(lat_mat[1]))
+        n_range = int(np.ceil(max_norm / lat_norm)) + 2
+
+    atoms: list[np.ndarray] = []
+    for n1 in range(-n_range, n_range + 1):
+        for n2 in range(-n_range, n_range + 1):
+            shift = n1 * lat_mat[0] + n2 * lat_mat[1]
+            for basis in basis_atoms_cart:
+                pos = shift + basis
+                frac = pos.dot(sc_inv)
+                if (-1e-6 <= frac[0] < 1.0 - 1e-6) and (-1e-6 <= frac[1] < 1.0 - 1e-6):
+                    atoms.append(pos)
+    return np.array(atoms, dtype=np.float64) if atoms else np.empty((0, 2), dtype=np.float64)
+
+
 def param_grid_from_bounds(
     bounds: list[tuple[float, float]],
     ndiv: int | None = None,
@@ -155,6 +188,7 @@ __all__ = [
     "find_scvect_pairs",
     "compute_mismatch",
     "build_a_lattice_candidates",
+    "atoms_in_supercell",
     "param_grid_from_bounds",
     "change_basis",
     "vec2d_cross",
