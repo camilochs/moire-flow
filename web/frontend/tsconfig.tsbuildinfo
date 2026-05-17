@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/boxnode.tsx","./src/components/canvas.tsx","./src/components/inspector.tsx","./src/components/sidebar.tsx","./src/components/topbar.tsx","./src/lib/api.ts","./src/lib/store.ts","./src/lib/theme.ts"],"version":"5.9.3"}

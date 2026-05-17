@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply font-sans antialiased;
+    font-feature-settings:
+      "ss01" on,
+      "ss02" on,
+      "cv01" on;
+  }
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-200/70 dark:border-zinc-700/70
+           bg-surface dark:bg-surface-dark px-3 py-1.5 text-sm font-medium
+           text-zinc-700 dark:text-zinc-200
+           shadow-soft hover:bg-elevated dark:hover:bg-elevated-dark
+           transition-colors;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-brand-600
+           bg-brand-600 px-3 py-1.5 text-sm font-medium text-white
+           shadow-soft hover:bg-brand-700 transition-colors;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-md bg-zinc-100 dark:bg-zinc-800
+           px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide
+           text-zinc-600 dark:text-zinc-400;
+  }
+  .field-label {
+    @apply text-[11px] font-medium uppercase tracking-wide
+           text-zinc-500 dark:text-zinc-400;
+  }
+  .input {
+    @apply w-full rounded-md border border-zinc-200 dark:border-zinc-700
+           bg-surface dark:bg-zinc-900 px-2.5 py-1.5 text-sm font-mono
+           text-zinc-800 dark:text-zinc-200
+           placeholder:text-zinc-400 dark:placeholder:text-zinc-500
+           focus:border-brand-500 focus:outline-none focus:ring-2
+           focus:ring-brand-500/20;
+  }
+  .panel {
+    @apply bg-surface dark:bg-surface-dark border-zinc-200 dark:border-zinc-800;
+  }
+}
+
+/* React Flow theme overrides — match our palette */
+.react-flow__renderer {
+  background: transparent;
+}
+.dark .react-flow__background pattern circle {
+  fill: rgb(63 63 70); /* zinc-700 */
+}
+.react-flow__background pattern circle {
+  fill: rgb(212 212 216); /* zinc-300 */
+}
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgb(99 102 241);
+  background: white;
+}
+.dark .react-flow__handle {
+  background: rgb(24 24 27);
+}
+.react-flow__edge-path {
+  stroke: rgb(99 102 241);
+  stroke-width: 1.5;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: rgb(67 56 202);
+  stroke-width: 2;
+}
+.react-flow__controls {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.react-flow__controls-button {
+  background: white;
+  border-bottom: 1px solid rgb(228 228 231);
+  width: 28px;
+  height: 28px;
+  color: rgb(63 63 70);
+}
+.dark .react-flow__controls-button {
+  background: rgb(24 24 27);
+  border-bottom: 1px solid rgb(39 39 42);
+  color: rgb(212 212 216);
+}
+.react-flow__controls-button:hover {
+  background: rgb(244 244 245);
+}
+.dark .react-flow__controls-button:hover {
+  background: rgb(39 39 42);
+}
+.react-flow__minimap {
+  border-radius: 8px;
+  background: rgb(244 244 245);
+}
+.dark .react-flow__minimap {
+  background: rgb(24 24 27);
+}
