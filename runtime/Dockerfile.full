@@ -1,0 +1,110 @@
+# moire-flow LAMMPS runtime (full) — MACE + ML-IAP + Python
+#
+# Source-compiles LAMMPS stable_29Aug2024 with the MLIP packages required
+# by the AI4AM 2026 paper this software backs:
+#   - MANYBODY (Tersoff, SW, EAM, ...)
+#   - KSPACE
+#   - MOLECULE
+#   - PYTHON
+#   - ML-IAP + MLIAP_ENABLE_PYTHON  → pair_style mliap model mliappy …
+#   - ML-MACE (linked against libtorch CPU)  → pair_style mace
+#   - ML-SNAP
+#
+# Plus `mace-torch` in the runtime Python so the mliappy bridge can load
+# MACE models exported via mace-torch's `select_head` / `mace-mliap`.
+#
+# QUIP/GAP is NOT in this image — it would need a separate libquip
+# Fortran build and is largely superseded by MACE for foundation-model
+# workflows like the one in the paper.
+#
+# linux/amd64 only (libtorch CPU wheels are x86_64-only). On Apple
+# Silicon the build runs under Rosetta/QEMU emulation in Colima
+# (~60-120 min, RAM-bound; use a 8+ GB VM if possible).
+#
+# Build:
+#   docker build --platform linux/amd64 \
+#       -t ghcr.io/camilochs/moire-flow-runtime:full \
+#       -f runtime/Dockerfile.full runtime/
+#
+# Smoke:
+#   docker run --platform linux/amd64 --rm \
+#       ghcr.io/camilochs/moire-flow-runtime:full \
+#       -h 2>&1 | head -5
+
+FROM --platform=linux/amd64 ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        wget \
+        curl \
+        ca-certificates \
+        python3 \
+        python3-dev \
+        python3-pip \
+        libopenmpi-dev \
+        openmpi-bin \
+        libfftw3-dev \
+        libpng-dev \
+        libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install mace-torch (CPU). Pulls torch + numpy + e3nn into Python so the
+# mliap-py interpreter inside LAMMPS can deserialize MACE models.
+RUN pip3 install --no-cache-dir \
+        "torch==2.4.1+cpu" \
+        --index-url https://download.pytorch.org/whl/cpu \
+    && pip3 install --no-cache-dir \
+        "mace-torch>=0.3.6" \
+        "numpy<2"
+
+# LAMMPS source
+ENV LAMMPS_VERSION=stable_29Aug2024
+RUN git clone --depth 1 --branch ${LAMMPS_VERSION} \
+        https://github.com/lammps/lammps.git /opt/lammps
+
+# Build LAMMPS with MACE + ML-IAP + Python.
+# Note: keep parallelism modest (RAM-bound under emulation).
+WORKDIR /opt/lammps
+RUN mkdir build && cd build && \
+    cmake \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D BUILD_MPI=on \
+        -D BUILD_SHARED_LIBS=on \
+        -D PKG_MANYBODY=on \
+        -D PKG_KSPACE=on \
+        -D PKG_MOLECULE=on \
+        -D PKG_PYTHON=on \
+        -D PKG_ML-IAP=on \
+        -D MLIAP_ENABLE_PYTHON=on \
+        -D PKG_ML-MACE=on \
+        -D PKG_ML-SNAP=on \
+        -D DOWNLOAD_LIBTORCH=on \
+        -D CMAKE_INSTALL_PREFIX=/usr/local \
+        ../cmake \
+    && make -j2 \
+    && make install \
+    && ldconfig
+
+# Stable alias so moire-flow's LammpsExecutor finds `lmp` directly.
+RUN if [ ! -e /usr/local/bin/lmp ]; then \
+        if command -v lmp_mpi >/dev/null; then ln -s "$(command -v lmp_mpi)" /usr/local/bin/lmp; \
+        elif command -v lmp_serial >/dev/null; then ln -s "$(command -v lmp_serial)" /usr/local/bin/lmp; \
+        fi; \
+    fi
+
+# Smoke-check the build
+RUN lmp -help 2>&1 | head -3 || (echo "[fatal] lmp didn't start"; exit 1)
+RUN echo "info pair_style" | lmp 2>&1 | grep -iE "mace|mliap|tersoff" | head -10 \
+    || (echo "[warn] MLIP pair styles not detected — verify build"; true)
+
+WORKDIR /work
+ENTRYPOINT ["lmp"]
+CMD ["-help"]
+
+LABEL org.opencontainers.image.source="https://github.com/camilochs/moire-flow"
+LABEL org.opencontainers.image.description="LAMMPS runtime for moire-flow (MACE + ML-IAP + Python)"

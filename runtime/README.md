@@ -6,24 +6,42 @@ Docker image that bundles a working LAMMPS for `moire_flow.supports.LammpsExecut
 
 | File | Image | Pair styles |
 |---|---|---|
-| [`Dockerfile`](Dockerfile) | `ghcr.io/camilochs/moire-flow-runtime:latest` | tersoff, sw, lj/cut, KSPACE, MANYBODY |
-| `Dockerfile.full` (TODO) | `ghcr.io/camilochs/moire-flow-runtime:full` | + QUIP/GAP, MACE, ML-IAP |
+| [`Dockerfile`](Dockerfile) | `moire-flow-runtime:latest` | tersoff, sw, lj/cut, KSPACE, MANYBODY |
+| [`Dockerfile.full`](Dockerfile.full) | `moire-flow-runtime:full` | + MACE (`pair_style mace`), ML-IAP (`pair_style mliap`), SNAP |
 
-Both are **linux/amd64 only**. QUIP and MACE-LAMMPS cannot be built on
-arm64 today (the QUIP Fortran modules require GCC + linker flags that
-break on Apple Silicon; MACE-LAMMPS depends on a libtorch wheel that
-ships only x86_64). See ANALYSIS.md §10.
+The minimal image is multi-arch. The `:full` image is **linux/amd64 only**
+because libtorch ships only x86_64 wheels and the MACE-LAMMPS package
+links against it. On Apple Silicon the `:full` build runs under Rosetta
+or QEMU emulation via Colima (`colima start --memory 8`), so expect
+60-120 minutes for the source compile.
+
+QUIP/GAP is intentionally out of the `:full` image — it requires a
+separate `libquip` Fortran build with gfortran-specific flags and is
+largely superseded by MACE for foundation-model workflows. The
+`format_gap_quip_script` writer is still present in `io/lammps_writer.py`
+so a future `Dockerfile.gap` recipe can drop in without code changes.
 
 ## Build locally
 
+Minimal (Tersoff/SW/LJ — multi-arch, ~2-3 min):
+
 ```bash
-docker build --platform linux/amd64 \
-    -t ghcr.io/camilochs/moire-flow-runtime:latest \
-    runtime/
+docker build -t moire-flow-runtime:latest runtime/
 ```
 
-The build is ~2-3 minutes on Apple Silicon with Rosetta or Colima
-(`colima start --arch x86_64`).
+Full (+ MACE + ML-IAP — linux/amd64, ~60-120 min on Apple Silicon):
+
+```bash
+docker build --platform linux/amd64 \
+    -t moire-flow-runtime:full \
+    -f runtime/Dockerfile.full runtime/
+```
+
+The `:full` build downloads libtorch (~1 GB), compiles LAMMPS from source
+(`-DPKG_ML-MACE=on -DPKG_ML-IAP=on -DMLIAP_ENABLE_PYTHON=on
+-DDOWNLOAD_LIBTORCH=on`), and installs `mace-torch` for the mliappy
+bridge. Total image size ~6 GB. Bump Colima VM memory before kicking it
+off: `colima stop && colima start --memory 8 --arch x86_64`.
 
 ## Smoke check
 

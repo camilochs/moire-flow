@@ -42,6 +42,7 @@ from moire_flow.core.types import BilayerAtoms
 from moire_flow.supports import LammpsExecutor, TrajectoryAnalyzer
 
 IMAGE = os.environ.get("MOIRE_FLOW_LAMMPS_IMAGE", "moire-flow-runtime:latest")
+FULL_IMAGE = os.environ.get("MOIRE_FLOW_LAMMPS_FULL_IMAGE", "moire-flow-runtime:full")
 
 
 def _docker_available() -> bool:
@@ -51,19 +52,23 @@ def _docker_available() -> bool:
     return res.returncode == 0
 
 
-def _image_present() -> bool:
+def _image_present(name: str) -> bool:
     if not _docker_available():
         return False
     res = subprocess.run(
-        ["docker", "image", "inspect", IMAGE],
+        ["docker", "image", "inspect", name],
         capture_output=True, text=True, timeout=10,
     )
     return res.returncode == 0
 
 
 requires_lammps = pytest.mark.skipif(
-    not _image_present(),
+    not _image_present(IMAGE),
     reason=f"Docker image {IMAGE!r} not available — build with `docker build -t moire-flow-runtime:latest runtime/`",
+)
+requires_lammps_full = pytest.mark.skipif(
+    not _image_present(FULL_IMAGE),
+    reason=f"Docker image {FULL_IMAGE!r} not available — build with `docker build --platform linux/amd64 -t moire-flow-runtime:full -f runtime/Dockerfile.full runtime/`",
 )
 
 
@@ -152,3 +157,28 @@ def test_lammps_runs_a_minimization(
     # PotEng must be finite and negative (bound state under LJ)
     assert analysis.final_pe_eV is not None
     assert np.isfinite(analysis.final_pe_eV)
+
+
+@requires_lammps_full
+def test_full_image_recognizes_mace_pair_style(docker_visible_tmp: Path):
+    """The :full image must enumerate `mace` and `mliap` among its pair styles.
+
+    Uses LAMMPS's `info` command (available since 2014) which prints every
+    pair style compiled into the binary. We don't need a real model file —
+    just to see `mace` in the list. If the ML-MACE package isn't compiled
+    in, `info` won't mention it.
+    """
+    script = docker_visible_tmp / "probe.in"
+    script.write_text("info styles pair\nquit\n")
+    executor = LammpsExecutor(image=FULL_IMAGE, platform="linux/amd64")
+    res = executor.run(script_path=script, work_dir=script.parent, timeout=60.0)
+    combined = (res.stdout + "\n"
+                + (res.log.read_text() if res.log.exists() else "")).lower()
+    assert "mace" in combined, (
+        "MACE pair style not registered in the :full image. Full output:\n"
+        + combined[-1500:]
+    )
+    assert "mliap" in combined, (
+        "ML-IAP pair style not registered in the :full image. Full output:\n"
+        + combined[-1500:]
+    )
