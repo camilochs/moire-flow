@@ -48,7 +48,10 @@ jobs:
           context: runtime
           file: runtime/Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          # amd64 only: the upstream lammps/lammps:latest image's arm64
+          # layer is a qemu emulator stub that lacks the actual lmp_serial
+          # binary, so `command -v lmp_serial` fails during our `ln -s`.
+          platforms: linux/amd64
           tags: |
             ghcr.io/${{ github.repository_owner }}/moire-flow-runtime:latest
 
