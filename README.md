@@ -7,9 +7,9 @@ LAMMPS-ready input, and inspect the result — either from Python, the CLI,
 or a visual studio in the browser.
 
 This is the software backing the AI4AM 2026 abstract
-*Evaluation of Foundation Models for van der Waals Heterostructure Moirè
-Supercells* (Cuccurullo, Chacón Sartori, Franco, Roche, García — ICN2,
-Barcelona). It refactors the original 12 164-line Colab notebook
+[*Evaluation of Foundation Models for van der Waals Heterostructure Moirè Supercells*](https://phantomsfoundation.com/AI4AM/2026/Abstracts/AI4AM2026_Cuccurullo_Susi_176.pdf)
+(Cuccurullo, Chacón Sartori, Franco, Roche, García — ICN2, Barcelona).
+It refactors the original 12 164-line Colab notebook
 (`reference/lattice_matching_02032026.py`) into nine typed,
 JSON-serializable boxes plus a DAG executor. Logic equivalence with the
 original is verified by 37 regression tests — see [VALIDATION.md](VALIDATION.md).
