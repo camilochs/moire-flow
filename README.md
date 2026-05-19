@@ -19,10 +19,7 @@ original is verified by 37 regression tests — see [VALIDATION.md](VALIDATION.m
 The end result of a moire-flow workflow is a relaxed bilayer that can be
 inspected atom by atom and pair-style by pair-style:
 
-<video src="web/docs/particles.mp4" controls width="360" muted loop playsinline>
-  Your browser does not support inline video — download
-  <a href="web/docs/particles.mp4">particles.mp4</a> instead.
-</video>
+https://github.com/camilochs/moire-flow/raw/refs/heads/main/web/docs/particles.mp4
 
 ## What it does
 
